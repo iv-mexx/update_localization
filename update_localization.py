@@ -24,6 +24,16 @@ I have added support for
 
 Futhermoer, the Localized.strings files are now created with a formatting that is equal to the original formatting
 
+
+
+Copyright (c) 2012 Markus Chmelar / Innovaptor OG
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 '''
 # -- Import --------------------------------------------------------------------
 # Regular Expressions
@@ -265,7 +275,7 @@ class LocalizedString(object):
 
 ENCODINGS = ['utf16', 'utf8']
 
-def merge_strings(old_strings, new_strings):
+def merge_strings(old_strings, new_strings, keep_comment=False):
     '''Merges two dictionarys, one with the old strings and one with the new
     strings. 
     Old strings keep their value but their comment will be updated. Only if
@@ -282,6 +292,11 @@ def merge_strings(old_strings, new_strings):
             
         new_strings
             Dictionary with the new Strings
+        
+        keep_comment
+            If True, the old comment will be kept. This is necessary for 
+            translating Storyboard files because they have generated comments
+            which are not very helpfull
             
     Returns
     
@@ -315,6 +330,23 @@ def merge_strings(old_strings, new_strings):
         'key4'
         >>> merge_dict['key4'].comment
         'comment4'
+        
+        >>> old_dict_2 = {}
+        >>> new_dict_2 = {}
+        >>> old_dict_2['key1'] = LocalizedString('key1', 'value1', 'comment1')
+        >>> new_dict_2['key1'] = LocalizedString('key1', 'value1', 'comment2')
+        >>> merged_1 = merge_strings(old_dict_2, new_dict_2, keep_comment=False)
+        >>> merged_1['key1'].value
+        'value1'
+        >>> merged_1['key1'].comment
+        'comment2'
+        >>> old_dict_2['key1'] = LocalizedString('key1', 'value1', 'comment1')
+        >>> new_dict_2['key1'] = LocalizedString('key1', 'value1', 'comment2')
+        >>> merged_2 = merge_strings(old_dict_2, new_dict_2, keep_comment=True)
+        >>> merged_2['key1'].value
+        'value1'
+        >>> merged_2['key1'].comment
+        'comment1'
     '''
     merged_strings = {}
     for key, old_string in old_strings.iteritems():
@@ -322,10 +354,14 @@ def merge_strings(old_strings, new_strings):
             new_string = new_strings[key]
             if old_string.is_raw():
                 # if the old string is raw just take the new string
+                if keep_comment:
+                    new_string.comment = old_string.comment
                 merged_strings[key] = new_string
             else:
                 # otherwise take the value of the old string but the comment of the new string
                 new_string.value = old_string.value
+                if keep_comment:
+                    new_string.comment = old_string.comment
                 merged_strings[key] = new_string
             # remove the string from the new strings
             del new_strings[key]
@@ -352,11 +388,6 @@ def parse_file(file_path, encoding='utf16'):
                 encoding of the file
                 
         Returns:    ``dict``
-        
-        Examples:
-        
-            >>> s = parse_file('TestFiles/Localizable.strings',\
-                 encoding='utf16')
     '''
     
     with codecs.open(file_path, mode='r', encoding=encoding) as file_contents:
@@ -458,6 +489,35 @@ def find_sources(folder_path, extensions=None, ignore_patterns=None):
     logging.info('Found %d files', len(code_file_paths))
     return code_file_paths
 
+def gen_strings_interface(folder_path, gen_path = None, ignore_patterns=None):
+    '''Generates strings for all interface files in the path
+    '''
+    extensions = ['xib', 'nib', 'storyboard']
+    code_file_paths = find_sources(folder_path, extensions, ignore_patterns)
+
+    if gen_path == None:
+        gen_path = code_file_paths
+
+    logging.debug('Running ibtool')
+    temp_folder_path = tempfile.mkdtemp()
+    
+    for code_file_path in code_file_paths:
+        (file_path, file_name) = os.path.split(code_file_path)
+        target_path = os.path.splitext(file_name)[0] + '.strings'
+        file_name = os.path.basename(code_file_path)
+        file_name = os.path.splitext(file_name)[0] + '.strings'
+        export_path = os.path.join(temp_folder_path,file_name)
+        arguments = ['ibtool', '--export-strings-file', export_path, 
+                                                        code_file_path]
+        logging.debug('Arguments: {}'.format(arguments))
+        subprocess.call(arguments)
+        # For each file (which is a single Table) read the corresponding existing file and combine them
+        logging.debug('Temp File found: {}'.format(export_path))
+        current_file_path = os.path.join(gen_path, target_path)
+        merge_files(export_path, current_file_path, gen_path, keep_comment=True)
+        os.remove(export_path)
+    shutil.rmtree(temp_folder_path)
+
 def gen_strings(folder_path, gen_path = None, extensions=None, ignore_patterns=None):
     '''Runs gen-strings on all files in the path. 
     
@@ -479,10 +539,6 @@ def gen_strings(folder_path, gen_path = None, extensions=None, ignore_patterns=N
         ignore_patterns
             If this parameter is different to None, files which path match the 
             ignore pattern will be ignored
-    
-    Examples:
-    
-        >>> gen_strings('TestInput', 'TestFiles', ['m', 'h'], ['3rdParty'])
     '''
     code_file_paths = find_sources(folder_path, extensions, ignore_patterns)
 
@@ -502,25 +558,36 @@ def gen_strings(folder_path, gen_path = None, extensions=None, ignore_patterns=N
         # For each file (which is a single Table) read the corresponding existing file and combine them
         logging.debug('Temp File found: {}'.format(temp_file))
         temp_file_path = os.path.join(temp_folder_path, temp_file)
-        logging.debug('Analysing genstrings content')
-        new_strings = parse_file(temp_file_path)
         current_file_path = os.path.join(gen_path, temp_file)
-        logging.debug('Current File: {}'.format(current_file_path))
-        if os.path.exists(current_file_path):
-            logging.debug('File Exists, merge them')
-            old_strings = parse_file(current_file_path)
-            final_strings = merge_strings(old_strings, new_strings)
-            write_file(current_file_path, final_strings)
-        else:
-            logging.info('File {} is new'.format(temp_file))
-            shutil.copy(temp_file_path, folder_path)
+        merge_files(temp_file_path, current_file_path, gen_path)
         os.remove(temp_file_path)
-    logging.debug('done')
-
     shutil.rmtree(temp_folder_path)
-            
+    
+def merge_files(new_file_path, old_file_path, folder_path, keep_comment=False):
+    '''Scans the Strings in both files, merges them together and writes the 
+    result to the old file
+    
+    Keyword Arguments
+    
+        new_file_path
+            Path to the new generated strings file
+        
+        old_file_path
+            Path to the existing strings file
+    '''
+    new_strings = parse_file(new_file_path)
+    logging.debug('Current File: {}'.format(old_file_path))
+    if os.path.exists(old_file_path):
+        logging.debug('File Exists, merge them')
+        old_strings = parse_file(old_file_path)
+        final_strings = merge_strings(old_strings, new_strings, keep_comment)
+        write_file(old_file_path, final_strings)
+    else:
+        logging.info('File {} is new'.format(new_file_path))
+        shutil.copy(new_file_path, folder_path)
+        
 def main():
-    ''' Parse the command line and do what it is telled to do '''
+    ''' Parse the command line and execute the programm with the parameters '''
     
     parser = optparse.OptionParser(
         'usage: %prog [options] [output folder] [source folders] [ignore patterns]'
@@ -571,6 +638,13 @@ def main():
         default = None,
         help='File-Extensions that should be scanned'
     )
+    parser.add_option(
+        '--interface',
+        action='store_true',
+        dest='interface',
+        default=False,
+        help='Also Localize Interface files'
+    )
 
     (options, args) = parser.parse_args()
 
@@ -589,6 +663,11 @@ def main():
             gen_path=options.output_path,
             extensions=options.extensions,
             ignore_patterns=options.ignore_patterns)
+            
+    if options.interface:
+        gen_strings_interface(folder_path=options.input_path,
+                gen_path=options.output_path,
+                ignore_patterns=options.ignore_patterns)
         
     return 0
             
