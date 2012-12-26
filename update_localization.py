@@ -252,7 +252,7 @@ class LocalizedString(object):
 
     def __str__(self):
         if self.comment:
-            return ' /* %s */\n"%s" = "%s";\n' % (
+            return '/* %s */\n"%s" = "%s";\n' % (
                 self.comment, self.key or '', self.value or '', 
             )
         else:
@@ -387,8 +387,8 @@ def sort_strings(strings):
     '''Returns an array that contains all LocalizedStrings objects of the 
     dictionary, sorted alphabetically
     '''
-    keys = strings.keys();
-    keys.sort
+    keys = strings.keys()
+    keys.sort()
     
     values = []
     for key in keys:
