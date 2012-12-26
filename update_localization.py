@@ -8,13 +8,13 @@
 # ------------------------------------------------------------------------------
 
 '''
-This script helps keeping the LocalizedStrings in an Xcode Project up-to-date.
+This script helps keeping the LocalizedStrings in an Xcode project up-to-date.
 
-Rather than replacing all Entrys like genstrings does, this script keeps track of which entrys are already translated and saves them. 
+Rather than replacing all entries like genstrings does, this script keeps track of which entries are already translated and saves them. 
 
 The code is inspired by the script update_strings written by the user ndfred on StackOverflow
 (http://stackoverflow.com/users/303539/ndfred) and published in this post http://stackoverflow.com/questions/9895621/best-practice-using-nslocalizedstring
-Some snippets are taken from his original script but the most part was rewritten by me
+Some snippets are taken from his original script, but the most part was rewritten by me.
 
 I have added support for
     - Multiple Translation Tables
@@ -22,7 +22,7 @@ I have added support for
     - Added Option for specifying file-extensions that should be scanned
     - Added Support for Default-Values
 
-Also, the Localized.strings files are now created with a formating that is equal to the original formating
+Futhermoer, the Localized.strings files are now created with a formatting that is equal to the original formatting
 
 '''
 # -- Import --------------------------------------------------------------------
