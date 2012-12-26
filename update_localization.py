@@ -19,7 +19,10 @@ Some snippets are taken from his original script but the most part was rewritten
 I have added support for
     - Multiple Translation Tables
     - Excluding Files and Paths that match an ignore-pattern
+    - Added Option for specifying file-extensions that should be scanned
     - Added Support for Default-Values
+
+Also, the Localized.strings files are now created with a formating that is equal to the original formating
 
 '''
 # -- Import --------------------------------------------------------------------
