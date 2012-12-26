@@ -1,0 +1,1 @@
+NSLocalizedStringWithDefaultValue(@"key_h", @"Localizable", [NSBundle mainBundle], @"Header", @"Key in a header");

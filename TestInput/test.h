@@ -1,0 +1,1 @@
+NSLocalizedStringWithDefaultValue(@"key_3rd_h", @"Localizable", [NSBundle mainBundle], @"3rd Party Header", @"Key in Header in 3rd Party Folder");
