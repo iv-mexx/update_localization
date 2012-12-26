@@ -200,6 +200,35 @@ class LocalizedString(object):
                 )
         else:
             return (None, None)
+    
+    def __eq__(self, other):
+        '''Tests Equality of two LocalizedStrings
+        
+        >>> s1 = LocalizedString('key1', 'value1', 'comment1')
+        >>> s2 = LocalizedString('key1', 'value1', 'comment1')
+        >>> s3 = LocalizedString('key1', 'value2', 'comment1')
+        >>> s4 = LocalizedString('key1', 'value1', 'comment2')
+        >>> s5 = LocalizedString('key1', 'value2', 'comment2')
+        >>> s1 == s2
+        True
+        >>> s1 == s3
+        False
+        >>> s1 == s4
+        False
+        >>> s1 == s5
+        False
+        '''
+        if isinstance(other, LocalizedString):
+            return (self.key == other.key and self.value == other.value and
+                     self.comment == other.comment)
+        else:
+            return NotImplemented
+            
+    def __neq__(slef, other):
+        result = self.__eq__(other)
+        if(result is NotImplemented):
+            return result
+        return not result
 
     def __init__(self, key, value=None, comment=None):
         super(LocalizedString, self).__init__()
@@ -561,4 +590,5 @@ def main():
     return 0
             
 if __name__ == '__main__':
+    doctest.testmod()
     sys.exit(main())
