@@ -62,7 +62,7 @@ class LocalizedStringLineParser(object):
     ''' Parses single lines and creates LocalizedString objects from them'''
     def __init__(self):
         # Possible Parsing states indicating what is waited for
-        self.ParseStates = {'COMMENT':1, 'STRING':2}    
+        self.ParseStates = {'COMMENT':1, 'STRING':2, 'TRAILING_COMMENT':3}    
         # The parsing state indicates what the last parsed thing was
         self.parse_state = self.ParseStates['COMMENT']                      
         self.key = None
@@ -108,11 +108,46 @@ class LocalizedStringLineParser(object):
             'value2'
             >>> string.comment
             'Comment2'
+            
+
+            >>> parser = LocalizedStringLineParser()
+            >>> string = parser.parse_line('"KEY3" = "VALUE3"; /* Comment3 */')
+            >>> string.key
+            'KEY3'
+            >>> string.value
+            'VALUE3'
+            >>> string.comment
+            'Comment3'
         '''
         if self.parse_state == self.ParseStates['COMMENT']:
+            (self.key, self.value, self.comment) = LocalizedString.parse_trailing_comment(line)
+            if self.key != None and self.value != None and self.comment != None:
+                localizedString = LocalizedString(
+                                self.key,
+                                self.value,
+                                self.comment
+                                )
+                self.key = None
+                self.value = None
+                self.comment = None
+                return localizedString
             self.comment = LocalizedString.parse_comment(line)
             if self.comment != None:
                 self.parse_state = self.ParseStates['STRING']
+            return None
+        elif self.parse_state == self.ParseStates['TRAILING_COMMENT']:
+            self.comment = LocalizedString.parse_comment(line)
+            if self.comment != None:
+                localizedString = LocalizedString(
+                            self.key,
+                            self.value,
+                            self.comment
+                            )
+                self.key = None
+                self.value = None
+                self.comment = None
+                self.parse_state = self.ParseStates['COMMENT']
+                return localizedString
             return None
         elif self.parse_state == self.ParseStates['STRING']:
             (self.key, self.value) = LocalizedString.parse_localized_pair(
@@ -155,6 +190,52 @@ class LocalizedString(object):
         # End of line
         '$'
     )
+    LOCALIZED_STRING_TRAILING_COMMENT_EXPR = re.compile(
+        # Line start
+        '^'
+        # Key
+        '"(?P<key>.+)"'
+        # Equals
+        ' ?= ?'
+        # Value
+        '"(?P<value>.+)"'
+        # Whitespace
+        ' ?; ?'
+        # Comment
+        '/\* (?P<comment>.+) \*/'
+        # End of line
+        '$'
+
+    )
+    
+    @classmethod
+    def parse_trailing_comment(cls, line):
+        '''Extract the content of a line with a trailing comment.
+        
+        Keyword arguments:
+        
+            line
+                The line to be parsed
+                
+        Returns
+            ``tuple`` with key, value and comment
+            ``None`` when the line was no comment
+            
+        Examples
+        
+            >>> line = '"key3" = "value3";/* Bla */'
+            >>> LocalizedString.parse_trailing_comment(line)
+            ('key3', 'value3', 'Bla')
+        '''
+        result = cls.LOCALIZED_STRING_TRAILING_COMMENT_EXPR.match(line)
+        if result != None:
+            return (
+                result.group('key'),
+                result.group('value'),
+                result.group('comment')
+                )
+        else:
+            return (None, None, None)
     
     @classmethod
     def parse_comment(cls, line):
@@ -203,7 +284,6 @@ class LocalizedString(object):
             (None, None)
             >>> LocalizedString.parse_localized_pair('"key1" = "value1";')
             ('key1', 'value1')
-            
         '''
         result = cls.LOCALIZED_STRING_EXPR.match(line)
         if result != None:
