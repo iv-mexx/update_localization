@@ -58,38 +58,40 @@ import logging
 import doctest
 
 # -- Class ---------------------------------------------------------------------
+
+
 class LocalizedStringLineParser(object):
     ''' Parses single lines and creates LocalizedString objects from them'''
     def __init__(self):
         # Possible Parsing states indicating what is waited for
-        self.ParseStates = {'COMMENT':1, 'STRING':2, 'TRAILING_COMMENT':3}    
+        self.ParseStates = {'COMMENT': 1, 'STRING': 2, 'TRAILING_COMMENT': 3}
         # The parsing state indicates what the last parsed thing was
-        self.parse_state = self.ParseStates['COMMENT']                      
+        self.parse_state = self.ParseStates['COMMENT']
         self.key = None
         self.value = None
         self.comment = None
-        
+
     def parse_line(self, line):
-        ''' Parses a single line. Keeps track of the current state and creates 
+        ''' Parses a single line. Keeps track of the current state and creates
         LocalizedString objects as appropriate
-        
+
         Keyword arguments:
-        
+
             line
                 The next line to be parsed
-                
+
         Examples
-        
+
             >>> parser = LocalizedStringLineParser()
             >>> string = parser.parse_line('    ')
             >>> string
-            
+
             >>> string = parser.parse_line('/* Comment1 */')
             >>> string
-            
+
             >>> string = parser.parse_line('    ')
             >>> string
-            
+
             >>> string = parser.parse_line('"key1" = "value1";')
             >>> string.key
             'key1'
@@ -97,10 +99,10 @@ class LocalizedStringLineParser(object):
             'value1'
             >>> string.comment
             'Comment1'
-            
+
             >>> string = parser.parse_line('/* Comment2 */')
             >>> string
-            
+
             >>> string = parser.parse_line('"key2" = "value2";')
             >>> string.key
             'key2'
@@ -108,7 +110,7 @@ class LocalizedStringLineParser(object):
             'value2'
             >>> string.comment
             'Comment2'
-            
+
 
             >>> parser = LocalizedStringLineParser()
             >>> string = parser.parse_line('"KEY3" = "VALUE3"; /* Comment3 */')
@@ -121,28 +123,28 @@ class LocalizedStringLineParser(object):
         '''
         if self.parse_state == self.ParseStates['COMMENT']:
             (self.key, self.value, self.comment) = LocalizedString.parse_trailing_comment(line)
-            if self.key != None and self.value != None and self.comment != None:
+            if self.key is not None and self.value is not None and self.comment is not None:
                 localizedString = LocalizedString(
-                                self.key,
-                                self.value,
-                                self.comment
-                                )
+                    self.key,
+                    self.value,
+                    self.comment
+                )
                 self.key = None
                 self.value = None
                 self.comment = None
                 return localizedString
             self.comment = LocalizedString.parse_comment(line)
-            if self.comment != None:
+            if self.comment is not None:
                 self.parse_state = self.ParseStates['STRING']
             return None
         elif self.parse_state == self.ParseStates['TRAILING_COMMENT']:
             self.comment = LocalizedString.parse_comment(line)
-            if self.comment != None:
+            if self.comment is not None:
                 localizedString = LocalizedString(
-                            self.key,
-                            self.value,
-                            self.comment
-                            )
+                    self.key,
+                    self.value,
+                    self.comment
+                )
                 self.key = None
                 self.value = None
                 self.comment = None
@@ -152,20 +154,21 @@ class LocalizedStringLineParser(object):
         elif self.parse_state == self.ParseStates['STRING']:
             (self.key, self.value) = LocalizedString.parse_localized_pair(
                 line
-                )
-            if self.key != None and self.value != None:
+            )
+            if self.key is not None and self.value is not None:
                 self.parse_state = self.ParseStates['COMMENT']
                 localizedString = LocalizedString(
-                    self.key, 
-                    self.value, 
+                    self.key,
+                    self.value,
                     self.comment
-                    )
+                )
                 self.key = None
                 self.value = None
                 self.comment = None
-                return  localizedString
+                return localizedString
             return None
-    
+
+
 class LocalizedString(object):
     ''' A localizes string entry with key, value and comment'''
     COMMENT_EXPR = re.compile(
@@ -207,58 +210,58 @@ class LocalizedString(object):
         '$'
 
     )
-    
+
     @classmethod
     def parse_trailing_comment(cls, line):
         '''Extract the content of a line with a trailing comment.
-        
+
         Keyword arguments:
-        
+
             line
                 The line to be parsed
-                
+
         Returns
             ``tuple`` with key, value and comment
             ``None`` when the line was no comment
-            
+
         Examples
-        
+
             >>> line = '"key3" = "value3";/* Bla */'
             >>> LocalizedString.parse_trailing_comment(line)
             ('key3', 'value3', 'Bla')
         '''
         result = cls.LOCALIZED_STRING_TRAILING_COMMENT_EXPR.match(line)
-        if result != None:
+        if result is not None:
             return (
                 result.group('key'),
                 result.group('value'),
                 result.group('comment')
-                )
+            )
         else:
             return (None, None, None)
-    
+
     @classmethod
     def parse_comment(cls, line):
         '''Extract the content of a comment line from a line.
-        
+
         Keyword arguments:
-        
+
             line
                 The line to be parsed
-                
+
         Returns
             ``string`` with the Comment or
             ``None`` when the line was no comment
-            
+
         Examples
-        
+
             >>> LocalizedString.parse_comment('This line is no comment')
             >>> LocalizedString.parse_comment('')
             >>> LocalizedString.parse_comment('/* Comment */')
             'Comment'
         '''
         result = cls.COMMENT_EXPR.match(line)
-        if result != None:
+        if result is not None:
             return result.group('comment')
         else:
             return None
@@ -266,18 +269,18 @@ class LocalizedString(object):
     @classmethod
     def parse_localized_pair(cls, line):
         '''Extract the content of a key/value pair from a line.
-        
+
         Keyword arguments:
-        
+
             line
                 The line to be parsed
-        
+
         Returns
             ``tupple`` with key and value as strings
             ``tupple`` (None, None) when the line was no match
-            
+
         Examples
-        
+
             >>> LocalizedString.parse_localized_pair('Some Line')
             (None, None)
             >>> LocalizedString.parse_localized_pair('/* Comment */')
@@ -286,17 +289,17 @@ class LocalizedString(object):
             ('key1', 'value1')
         '''
         result = cls.LOCALIZED_STRING_EXPR.match(line)
-        if result != None:
+        if result is not None:
             return (
                 result.group('key'),
                 result.group('value')
-                )
+            )
         else:
             return (None, None)
-    
+
     def __eq__(self, other):
         '''Tests Equality of two LocalizedStrings
-        
+
         >>> s1 = LocalizedString('key1', 'value1', 'comment1')
         >>> s2 = LocalizedString('key1', 'value1', 'comment1')
         >>> s3 = LocalizedString('key1', 'value2', 'comment1')
@@ -313,10 +316,10 @@ class LocalizedString(object):
         '''
         if isinstance(other, LocalizedString):
             return (self.key == other.key and self.value == other.value and
-                     self.comment == other.comment)
+                    self.comment == other.comment)
         else:
             return NotImplemented
-            
+
     def __neq__(slef, other):
         result = self.__eq__(other)
         if(result is NotImplemented):
@@ -332,7 +335,7 @@ class LocalizedString(object):
     def is_raw(self):
         '''
         Return True if the localized string has not been translated.
-        
+
         Examples
             >>> l1 = LocalizedString('key1', 'valye1', 'comment1')
             >>> l1.is_raw()
@@ -346,7 +349,7 @@ class LocalizedString(object):
     def __str__(self):
         if self.comment:
             return '/* %s */\n"%s" = "%s";\n' % (
-                self.comment, self.key or '', self.value or '', 
+                self.comment, self.key or '', self.value or '',
             )
         else:
             return '"%s" = "%s";\n' % (self.key or '', self.value or '')
@@ -355,35 +358,36 @@ class LocalizedString(object):
 
 ENCODINGS = ['utf16', 'utf8']
 
+
 def merge_strings(old_strings, new_strings, keep_comment=False):
     '''Merges two dictionarys, one with the old strings and one with the new
-    strings. 
+    strings.
     Old strings keep their value but their comment will be updated. Only if
-    the string is 'raw' which means its value is equal to its key, the value 
+    the string is 'raw' which means its value is equal to its key, the value
     will be replaced by the new one.
-    But because the method has to work with NSLocalizedStringWithDefaultValue 
+    But because the method has to work with NSLocalizedStringWithDefaultValue
     as well it is not possible to detect untranslated strings with default value
     so if the default value changes this will not be updated!
-    
+
     Keyword arguments:
-        
+
         old_strings
             Dictionary with the Strings that were already there
-            
+
         new_strings
             Dictionary with the new Strings
-        
+
         keep_comment
-            If True, the old comment will be kept. This is necessary for 
+            If True, the old comment will be kept. This is necessary for
             translating Storyboard files because they have generated comments
             which are not very helpfull
-            
+
     Returns
-    
+
         Merged Dictionary
-        
+
     Examples:
-    
+
         >>> old_dict = {}
         >>> old_dict['key1'] = LocalizedString('key1', 'value1', 'comment1')
         >>> old_dict['key2'] = LocalizedString('key2', 'value2', 'comment2')
@@ -410,7 +414,7 @@ def merge_strings(old_strings, new_strings, keep_comment=False):
         'key4'
         >>> merge_dict['key4'].comment
         'comment4'
-        
+
         >>> old_dict_2 = {}
         >>> new_dict_2 = {}
         >>> old_dict_2['key1'] = LocalizedString('key1', 'value1', 'comment1')
@@ -430,7 +434,7 @@ def merge_strings(old_strings, new_strings, keep_comment=False):
     '''
     merged_strings = {}
     for key, old_string in old_strings.iteritems():
-        if new_strings.has_key(key):
+        if key in new_strings:
             new_string = new_strings[key]
             if old_string.is_raw():
                 # if the old string is raw just take the new string
@@ -449,44 +453,47 @@ def merge_strings(old_strings, new_strings, keep_comment=False):
             # If the String is not in the new Strings anymore it has been removed
             # TODO: Include option to not remove old keys!
             pass
-    # All strings that are still in the new_strings dict are really new and can be copied 
+    # All strings that are still in the new_strings dict are really new and can be copied
     for key, new_string in new_strings.iteritems():
         merged_strings[key] = new_string
-        
+
     return merged_strings
 
+
 def parse_file(file_path, encoding='utf16'):
-    ''' Parses a file and creates a dictionary containing all LocalizedStrings 
+    ''' Parses a file and creates a dictionary containing all LocalizedStrings
         elements in the file
-        
+
         Keyword arguments:
-        
+
             file_path
                 path to the file that should be parsed
-                
+
             encoding
                 encoding of the file
-                
+
         Returns:    ``dict``
     '''
-    
+
     with codecs.open(file_path, mode='r', encoding=encoding) as file_contents:
         logging.debug("Parsing File: {}".format(file_path))
         parser = LocalizedStringLineParser()
         localized_strings = {}
         for line in file_contents:
             localized_string = parser.parse_line(line)
-            if localized_string != None:
+            if localized_string is not None:
                 localized_strings[localized_string.key] = localized_string
     return localized_strings
-    
+
+
 def write_file(file_path, strings, encoding='utf16'):
     '''Writes the strings to the given file
     '''
     with codecs.open(file_path, 'w', encoding) as output:
         for string in sort_strings(strings):
             output.write('%s\n' % string)
-    
+
+
 def strings_to_file(localized_strings, file_path, encoding='utf16'):
     '''
     Write a strings file at file_path containing string in
@@ -496,70 +503,72 @@ def strings_to_file(localized_strings, file_path, encoding='utf16'):
     with codecs.open(file_path, 'w', encoding) as output:
         for localized_string in sorted_strings_from_dict(localized_strings):
             output.write('%s\n' % localized_string)
-            
+
+
 def sort_strings(strings):
-    '''Returns an array that contains all LocalizedStrings objects of the 
+    '''Returns an array that contains all LocalizedStrings objects of the
     dictionary, sorted alphabetically
     '''
     keys = strings.keys()
     keys.sort()
-    
+
     values = []
     for key in keys:
         values.append(strings[key])
-    
+
     return values
-    
+
+
 def find_sources(folder_path, extensions=None, ignore_patterns=None):
-    '''Finds all source-files in the path that fit the extensions and         
+    '''Finds all source-files in the path that fit the extensions and
     ignore-patterns
-    
+
     Keyword arguments:
-    
+
         folder_path
             The path to the folder, all files in this folder will recursively
             be searched
-            
+
         extensions
             If this parameter is different to None, only files with the given
             extension will be used
             If None, defaults to [c, m, mm]
-            
+
         ignore_patterns
-            If this parameter is different to None, files which path match the 
+            If this parameter is different to None, files which path match the
             ignore pattern will be ignored
-            
+
     Returns:
-    
+
         Array with paths to all files that have to be used with genstrings
-    
+
     Examples:
-    
+
         >>> find_sources('TestInput')
         ['TestInput/test.m', 'TestInput/3rdParty/test2.m']
-        
+
         >>> find_sources('TestInput', ['h', 'm'])
         ['TestInput/test.h', 'TestInput/test.m', 'TestInput/3rdParty/test2.h', 'TestInput/3rdParty/test2.m']
 
         >>> find_sources('TestInput', ['h', 'm'], ['3rdParty'])
         ['TestInput/test.h', 'TestInput/test.m']
-        
+
         >>> find_sources('TestInput', ignore_patterns=['3rdParty'])
         ['TestInput/test.m']
     '''
     # First run genstrings on all source-files
     code_file_paths = []
-    if extensions == None:
+    if extensions is None:
         extensions = frozenset(['c', 'm', 'mm'])
 
     for dir_path, dir_names, file_names in os.walk(folder_path):
         ignorePath = False
-        if ignore_patterns != None:
+        if ignore_patterns is not None:
             for ignore_pattern in ignore_patterns:
                 if ignore_pattern in dir_path:
                     logging.debug('IGNORED Path: {}'.format(dir_path))
                     ignorePath = True
-        if ignorePath == False:
+        if ignorePath is False:
             logging.debug('DirPath: {}'.format(dir_path))
             for file_name in file_names:
                 extension = file_name.rpartition('.')[2]
@@ -569,26 +578,27 @@ def find_sources(folder_path, extensions=None, ignore_patterns=None):
     logging.info('Found %d files', len(code_file_paths))
     return code_file_paths
 
-def gen_strings_interface(folder_path, gen_path = None, ignore_patterns=None):
+
+def gen_strings_interface(folder_path, gen_path=None, ignore_patterns=None):
     '''Generates strings for all interface files in the path
     '''
     extensions = ['xib', 'nib', 'storyboard']
     code_file_paths = find_sources(folder_path, extensions, ignore_patterns)
 
-    if gen_path == None:
+    if gen_path is None:
         gen_path = code_file_paths
 
     logging.debug('Running ibtool')
     temp_folder_path = tempfile.mkdtemp()
-    
+
     for code_file_path in code_file_paths:
         (file_path, file_name) = os.path.split(code_file_path)
         target_path = os.path.splitext(file_name)[0] + '.strings'
         file_name = os.path.basename(code_file_path)
         file_name = os.path.splitext(file_name)[0] + '.strings'
-        export_path = os.path.join(temp_folder_path,file_name)
-        arguments = ['ibtool', '--export-strings-file', export_path, 
-                                                        code_file_path]
+        export_path = os.path.join(temp_folder_path, file_name)
+        arguments = ['ibtool', '--export-strings-file', export_path,
+
         logging.debug('Arguments: {}'.format(arguments))
         subprocess.call(arguments)
         # For each file (which is a single Table) read the corresponding existing file and combine them
@@ -598,41 +608,42 @@ def gen_strings_interface(folder_path, gen_path = None, ignore_patterns=None):
         os.remove(export_path)
     shutil.rmtree(temp_folder_path)
 
-def gen_strings(folder_path, gen_path = None, extensions=None, ignore_patterns=None):
-    '''Runs gen-strings on all files in the path. 
-    
+
+def gen_strings(folder_path, gen_path=None, extensions=None, ignore_patterns=None):
+    '''Runs gen-strings on all files in the path.
+
     Keyword arguments:
-    
+
         folder_path
             The path to the folder, all files in this folder will recursively
             be searched
-            
+
         gen_path
-            The path to the folder where the LocalizedString Files should be 
+            The path to the folder where the LocalizedString Files should be
             created
-            
+
         extensions
             If this parameter is different to None, only files with the given
             extension will be used
             If None, defaults to [c, m, mm]
-            
+
         ignore_patterns
-            If this parameter is different to None, files which path match the 
+            If this parameter is different to None, files which path match the
             ignore pattern will be ignored
     '''
     code_file_paths = find_sources(folder_path, extensions, ignore_patterns)
 
-    if gen_path == None:
+    if gen_path is None:
         gen_path = code_file_paths
 
     logging.debug('Running genstrings')
     temp_folder_path = tempfile.mkdtemp()
-    
+
     arguments = ['genstrings', '-u', '-o', temp_folder_path]
     arguments.extend(code_file_paths)
     subprocess.call(arguments)
     logging.debug('Temp Path: {}'.format(temp_folder_path))
-    
+
     #Read the Strings from the new generated strings
     for temp_file in os.listdir(temp_folder_path):
         # For each file (which is a single Table) read the corresponding existing file and combine them
@@ -642,16 +653,17 @@ def gen_strings(folder_path, gen_path = None, extensions=None, ignore_patterns=N
         merge_files(temp_file_path, current_file_path, gen_path)
         os.remove(temp_file_path)
     shutil.rmtree(temp_folder_path)
-    
+
+
 def merge_files(new_file_path, old_file_path, folder_path, keep_comment=False):
-    '''Scans the Strings in both files, merges them together and writes the 
+    '''Scans the Strings in both files, merges them together and writes the
     result to the old file
-    
+
     Keyword Arguments
-    
+
         new_file_path
             Path to the new generated strings file
-        
+
         old_file_path
             Path to the existing strings file
     '''
@@ -665,10 +677,11 @@ def merge_files(new_file_path, old_file_path, folder_path, keep_comment=False):
     else:
         logging.info('File {} is new'.format(new_file_path))
         shutil.copy(new_file_path, folder_path)
-        
+
+
 def main():
     ''' Parse the command line and execute the programm with the parameters '''
-    
+
     parser = optparse.OptionParser(
         'usage: %prog [options] [output folder] [source folders] [ignore patterns]'
     )
@@ -686,7 +699,7 @@ def main():
         action='store',
         dest='output_path',
         default='.',
-        help='Output Path where the .strings File should be generated'        
+        help='Output Path where the .strings File should be generated'
     )
     parser.add_option(
         '-v',
@@ -708,14 +721,14 @@ def main():
         '--ignore',
         action='append',
         dest='ignore_patterns',
-        default = None,
+        default=None,
         help='Ignore Paths that match the patterns'
     )
     parser.add_option(
         '--extension',
         action='append',
         dest='extensions',
-        default = None,
+        default=None,
         help='File-Extensions that should be scanned'
     )
     parser.add_option(
@@ -738,18 +751,17 @@ def main():
     if options.unittests:
         doctest.testmod()
         return
-    
+
     gen_strings(folder_path=options.input_path,
-            gen_path=options.output_path,
-            extensions=options.extensions,
-            ignore_patterns=options.ignore_patterns)
-            
+                gen_path=options.output_path,
+                extensions=options.extensions,
+                ignore_patterns=options.ignore_patterns)
+
     if options.interface:
         gen_strings_interface(folder_path=options.input_path,
-                gen_path=options.output_path,
-                ignore_patterns=options.ignore_patterns)
-        
+                              gen_path=options.output_path,
+                              ignore_patterns=options.ignore_patterns)
     return 0
-            
+
 if __name__ == '__main__':
     sys.exit(main())
