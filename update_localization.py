@@ -598,7 +598,7 @@ def gen_strings_interface(folder_path, gen_path=None, ignore_patterns=None):
         file_name = os.path.splitext(file_name)[0] + '.strings'
         export_path = os.path.join(temp_folder_path, file_name)
         arguments = ['ibtool', '--export-strings-file', export_path,
-
+                     code_file_path]
         logging.debug('Arguments: {}'.format(arguments))
         subprocess.call(arguments)
         # For each file (which is a single Table) read the corresponding existing file and combine them
