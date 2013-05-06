@@ -4,6 +4,7 @@ A Python Script that helps dealing with localizations in Xcode. It keeps track o
 
 Moreover it is possible to specify extensions of files that should be scanned and to specify ignore patterns for Files that should be ignored
 
+
 ## More Information
 
 For more information read my [blog post](www.innovaptor.com/blog/2013/02/07/a-localization-workflow-that-works-well-in-practice.html)
