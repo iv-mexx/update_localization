@@ -7,4 +7,4 @@ Moreover it is possible to specify extensions of files that should be scanned an
 
 ## More Information
 
-For more information read my [blog post](www.innovaptor.com/blog/2013/02/07/a-localization-workflow-that-works-well-in-practice.html)
+For more information read my blog post at http://www.innovaptor.com/blog/2013/02/07/a-localization-workflow-that-works-well-in-practice.html
