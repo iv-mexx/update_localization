@@ -38,10 +38,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 # -- Import --------------------------------------------------------------------
 # Regular Expressions
 import re
-# System Specific parameters and functions
-import sys
 # Operation Systems and Path Operations
 import os
+# System Utilities
+import sys
 # Creating and using Temporal File
 import tempfile
 # Running Commands on the Commandline
@@ -64,7 +64,8 @@ class LocalizedStringLineParser(object):
     ''' Parses single lines and creates LocalizedString objects from them'''
     def __init__(self):
         # Possible Parsing states indicating what is waited for
-        self.ParseStates = {'COMMENT': 1, 'STRING': 2, 'TRAILING_COMMENT': 3}
+        self.ParseStates = {'COMMENT': 1, 'STRING': 2, 'TRAILING_COMMENT': 3, 
+                            'STRING_MULTILINE': 4}
         # The parsing state indicates what the last parsed thing was
         self.parse_state = self.ParseStates['COMMENT']
         self.key = None
@@ -120,19 +121,27 @@ class LocalizedStringLineParser(object):
             'VALUE3'
             >>> string.comment
             'Comment3'
+
+
+
+            >>> parser = LocalizedStringLineParser()
+            >>> string = parser.parse_line('/* Comment4 */')
+            >>> string
+
+            >>> string = parser.parse_line('"KEY4" = "VALUE4')
+            >>> string
+
+            >>> string = parser.parse_line('VALUE4_LINE2";')
+            >>> string.key
+            'KEY4'
+            >>> string.value
+
+
         '''
         if self.parse_state == self.ParseStates['COMMENT']:
             (self.key, self.value, self.comment) = LocalizedString.parse_trailing_comment(line)
             if self.key is not None and self.value is not None and self.comment is not None:
-                localizedString = LocalizedString(
-                    self.key,
-                    self.value,
-                    self.comment
-                )
-                self.key = None
-                self.value = None
-                self.comment = None
-                return localizedString
+                return self.build_localizedString()
             self.comment = LocalizedString.parse_comment(line)
             if self.comment is not None:
                 self.parse_state = self.ParseStates['STRING']
@@ -140,16 +149,8 @@ class LocalizedStringLineParser(object):
         elif self.parse_state == self.ParseStates['TRAILING_COMMENT']:
             self.comment = LocalizedString.parse_comment(line)
             if self.comment is not None:
-                localizedString = LocalizedString(
-                    self.key,
-                    self.value,
-                    self.comment
-                )
-                self.key = None
-                self.value = None
-                self.comment = None
                 self.parse_state = self.ParseStates['COMMENT']
-                return localizedString
+                return self.build_localizedString()
             return None
         elif self.parse_state == self.ParseStates['STRING']:
             (self.key, self.value) = LocalizedString.parse_localized_pair(
@@ -157,17 +158,38 @@ class LocalizedStringLineParser(object):
             )
             if self.key is not None and self.value is not None:
                 self.parse_state = self.ParseStates['COMMENT']
-                localizedString = LocalizedString(
-                    self.key,
-                    self.value,
-                    self.comment
-                )
-                self.key = None
+                return self.build_localizedString()
+            # Otherwise, try if the Value is multi-line
+            (self.key, self.value_partial) = LocalizedString.parse_multiline_start(
+                line
+            )
+            if self.key is not None and self.value_partial is not None:
+                self.parse_state = self.ParseStates['STRING_MULTILINE']
                 self.value = None
-                self.comment = None
-                return localizedString
+            return None
+        elif self.parse_state == self.ParseStates['STRING_MULTILINE']:
+            value_part = LocalizedString.parse_multiline_end(line)
+            if value_part is not None:
+                self.value = self.value_partial + '\n' + value_part
+                self.value_partial = None
+                self.parse_state = self.ParseStates['COMMENT']
+                return self.build_localizedString()
+            value_part = LocalizedString.parse_multiline_line(line)
+            if value_part is not None:
+                self.value_partial = self.value_partial + '\n' +  value_part
             return None
 
+
+    def build_localizedString(self):
+        localizedString = LocalizedString(
+            self.key,
+            self.value,
+            self.comment
+        )
+        self.key = None
+        self.value = None
+        self.comment = None
+        return localizedString
 
 class LocalizedString(object):
     ''' A localizes string entry with key, value and comment'''
@@ -193,6 +215,36 @@ class LocalizedString(object):
         # End of line
         '$'
     )
+    LOCALIZED_STRING_MULTILINE_START_EXPR = re.compile(
+        # Line start
+        '^'
+        # Key
+        '"(?P<key>.+)"'
+        # Equals
+        ' ?= ?'
+        # Value
+        '"(?P<value>.+)'
+        # End of line
+        '$'
+    )
+    LOCALIZED_STRING_MULTILINE_LINE_EXPR = re.compile(
+        # Line start
+        '^'
+        # Value
+        '(?P<value>.+)'
+        # End of line
+        '$'
+    )
+    LOCALIZED_STRING_MULTILINE_END_EXPR = re.compile(
+        # Line start
+        '^'
+        # Value
+        '(?P<value>.+)"'
+        # Whitespace
+        ' ?; ?'
+        # End of line
+        '$'
+    )
     LOCALIZED_STRING_TRAILING_COMMENT_EXPR = re.compile(
         # Line start
         '^'
@@ -210,6 +262,83 @@ class LocalizedString(object):
         '$'
 
     )
+
+    @classmethod
+    def parse_multiline_start(cls, line):
+        ''' Parse the beginning of a multi-line entry, "KEY"="VALUE_LINE1
+
+        Keyword arguments:
+
+            line
+                The line to be parsed
+
+        Returns
+            ``tuple`` with key, value and comment
+            ``None`` when the line was no comment
+
+        Examples
+
+            >>> line = '"key" = "value4'
+            >>> LocalizedString.parse_multiline_start(line)
+            ('key', 'value4')
+
+        '''
+        result = cls.LOCALIZED_STRING_MULTILINE_START_EXPR.match(line)
+        if result is not None:
+            return (result.group('key'),
+                    result.group('value'))
+        else:
+            return (None, None)
+
+    @classmethod
+    def parse_multiline_line(cls, line):
+        ''' Parse an intermediate line of a multi-line entry, only value
+
+        Keyword arguments:
+
+            line
+                The line to be parsed
+
+        Returns
+            ``String`` with the value
+            ``None`` when the line was no comment
+
+        Examples
+
+            >>> line = 'value4, maybe something else'
+            >>> LocalizedString.parse_multiline_line(line)
+            'value4, maybe something else'
+        '''
+        result = cls.LOCALIZED_STRING_MULTILINE_LINE_EXPR.match(line)
+        if result is not None:
+            return result.group('value')
+        return None
+
+
+    @classmethod
+    def parse_multiline_end(cls, line):
+        ''' Parse an end line of a multi-line entry, only value
+
+        Keyword arguments:
+
+            line
+                The line to be parsed
+
+        Returns
+            ``String`` the value 
+            ``None`` when the line was no comment
+
+        Examples
+
+            >>> line = 'value4, maybe something else";'
+            >>> LocalizedString.parse_multiline_end(line)
+            'value4, maybe something else'
+        '''
+        result = cls.LOCALIZED_STRING_MULTILINE_END_EXPR.match(line)
+        if result is not None:
+            return result.group('value')
+        return None
+
 
     @classmethod
     def parse_trailing_comment(cls, line):
@@ -320,7 +449,7 @@ class LocalizedString(object):
         else:
             return NotImplemented
 
-    def __neq__(slef, other):
+    def __neq__(self, other):
         result = self.__eq__(other)
         if(result is NotImplemented):
             return result
@@ -764,4 +893,5 @@ def main():
     return 0
 
 if __name__ == '__main__':
+    # doctest.testmod()
     sys.exit(main())
