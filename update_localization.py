@@ -706,15 +706,23 @@ def parse_file(file_path, encoding='utf16'):
 
         Returns:    ``dict``
     '''
-
+    
     with codecs.open(file_path, mode='r', encoding=encoding) as file_contents:
         logging.debug("Parsing File: {}".format(file_path))
         parser = LocalizedStringLineParser()
         localized_strings = {}
-        for line in file_contents:
-            localized_string = parser.parse_line(line)
-            if localized_string is not None:
-                localized_strings[localized_string.key] = localized_string
+        try:
+            for line in file_contents:
+                localized_string = parser.parse_line(line)
+                if localized_string is not None:
+                    localized_strings[localized_string.key] = localized_string
+        except UnicodeError:
+            logging.debug("Failed to open file as UTF16, Trying UTF8")
+            file_contents = codecs.open(file_path, mode='r', encoding='utf8')
+            for line in file_contents:
+                localized_string = parser.parse_line(line)
+                if localized_string is not None:
+                    localized_strings[localized_string.key] = localized_string
     return localized_strings
 
 
