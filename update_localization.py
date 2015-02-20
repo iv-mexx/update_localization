@@ -772,7 +772,7 @@ def find_sources(folder_path, extensions=None, ignore_patterns=None):
         extensions
             If this parameter is different to None, only files with the given
             extension will be used
-            If None, defaults to [c, m, mm]
+            If None, defaults to [c, m, mm, swift]
 
         ignore_patterns
             If this parameter is different to None, files which path match the
@@ -799,7 +799,7 @@ def find_sources(folder_path, extensions=None, ignore_patterns=None):
     # First run genstrings on all source-files
     code_file_paths = []
     if extensions is None:
-        extensions = frozenset(['c', 'm', 'mm'])
+        extensions = frozenset(['c', 'm', 'mm', 'swift'])
 
     for dir_path, dir_names, file_names in os.walk(folder_path):
         ignorePath = False
@@ -865,7 +865,7 @@ def gen_strings(folder_path, gen_path=None, extensions=None, ignore_patterns=Non
         extensions
             If this parameter is different to None, only files with the given
             extension will be used
-            If None, defaults to [c, m, mm]
+            If None, defaults to [c, m, mm, swift]
 
         ignore_patterns
             If this parameter is different to None, files which path match the
