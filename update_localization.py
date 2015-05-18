@@ -916,6 +916,9 @@ def merge_files(new_file_path, old_file_path, folder_path, keep_comment=False):
         write_file(old_file_path, final_strings)
     else:
         logging.info('File {} is new'.format(new_file_path))
+        if not os.path.exists(folder_path):
+            logging.info('Creating path {} because it does not exist yet.'.format(folder_path))
+            os.makedirs(folder_path)
         shutil.copy(new_file_path, folder_path)
 
 
